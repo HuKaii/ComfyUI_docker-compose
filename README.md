@@ -1,0 +1,2 @@
+# ComfyUI_docker-compose
+这是一个基于Docker的ComfyUI部署项目，提供了完整的AI图像生成环境。项目使用Docker容器化技术，确保环境的一致性和可移植性，并集成了ComfyUI-Manager和中文翻译插件。
