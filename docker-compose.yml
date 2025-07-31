@@ -1,0 +1,63 @@
+version: '3'
+
+services:
+  comfyui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: comfyui:latest
+    container_name: ${CONTAINER_NAME:-comfyui-hukaii}
+    ports:
+      # 映射端口 如果未设置则使用默认值8188
+      - "${COMPFYUI_PORT:-8188}:8188"
+    dns:
+      # 添加Google DNS服务器
+      - 8.8.8.8
+      - 8.8.4.4
+    environment:
+      # 设置Python路径
+      - PYTHONPATH=/ComfyUI
+      # 启用ComfyUI-Manager调试模式
+      - COMFYUI_MANAGER_DEBUG=1
+    volumes:
+      # 使用Docker Volume存储模型 - 数据持久化且独立管理
+      - comfyui_models:/ComfyUI/models
+      # 输入目录
+      - ./input:/ComfyUI/input
+      # 输出目录
+      - ./output:/ComfyUI/output
+      # 用户目录
+      - ./user:/ComfyUI/user
+      # 插件配置持久化
+      - ./custom_nodes:/ComfyUI/custom_nodes
+    # 添加插件安装脚本 检查并安装插件
+    command: >
+      sh -c "
+        # 检查并安装ComfyUI-Manager插件
+        if [ ! -d '/ComfyUI/custom_nodes/ComfyUI-Manager' ]; then
+          echo '安装 ComfyUI-Manager 插件...'
+          git clone https://github.com/Comfy-Org/ComfyUI-Manager /ComfyUI/custom_nodes/ComfyUI-Manager
+        fi
+        
+        # 检查并安装AIGODLIKE-COMFYUI-TRANSLATION插件
+        if [ ! -d '/ComfyUI/custom_nodes/AIGODLIKE-COMFYUI-TRANSLATION' ]; then
+          echo '安装 AIGODLIKE-COMFYUI-TRANSLATION 插件...'
+          git clone https://github.com/AIGODLIKE/AIGODLIKE-COMFYUI-TRANSLATION /ComfyUI/custom_nodes/AIGODLIKE-COMFYUI-TRANSLATION
+        fi
+        
+        # 启动ComfyUI 监听所有网络接口 预览方法使用taesd 启用CORS头 *为允许所有来源访问
+        python main.py --listen 0.0.0.0 --preview-method taesd --enable-cors-header '*'
+      "
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    restart: unless-stopped
+
+# 定义Docker Volumes
+volumes:
+  comfyui_models:
+    driver: local
